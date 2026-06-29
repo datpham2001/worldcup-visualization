@@ -178,6 +178,7 @@ export function BracketMatchBox({
 
   return (
     <div
+      onClick={(e) => e.stopPropagation()}
       className={cn(
         'group/card relative rounded-[6px] overflow-hidden transition-all duration-300',
         routeState === 'active' &&

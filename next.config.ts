@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== 'production'
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options",        value: "DENY" },
@@ -9,10 +11,10 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // ESPN CDN images (used via <img> in video thumbnails + flags)
-      "img-src 'self' https://*.espncdn.com https://www.thesportsdb.com data: blob:",
-      // Framer Motion + Tailwind need inline styles/scripts
-      "script-src 'self' 'unsafe-inline'",
+      // ESPN CDN images + TheSportsDB player photos (wildcard covers all subdomains)
+      "img-src 'self' https://*.espncdn.com https://*.thesportsdb.com data: blob:",
+      // React/Turbopack requires 'unsafe-eval' in development mode
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self'",
       // All API calls go through our own Next.js routes

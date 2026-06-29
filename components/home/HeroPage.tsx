@@ -422,7 +422,7 @@ export function HeroPage({ todayCount, liveCount, totalGoals }: HeroPageProps) {
         </motion.div>
 
         {/* Center */}
-        <div className="flex flex-col items-center text-center gap-6 -mt-16 md:-mt-20">
+        <div className="flex flex-col items-center text-center gap-6">
           {/* Title */}
           <div className="flex flex-col items-center">
             <motion.h1

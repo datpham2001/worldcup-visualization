@@ -16,6 +16,7 @@ import type { Match } from '@/types/match'
 import type { BracketRound, BracketMatch, BracketRoundId } from '@/types/bracket'
 import type { Group } from '@/types/standings'
 import { cn } from '@/lib/utils'
+import Image from 'next/image'
 import { RefreshCw, X, Trophy, ChevronRight } from 'lucide-react'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -210,11 +211,21 @@ function CenterColumn({
       <div className="flex flex-col items-center justify-center gap-5" style={{ height: TOTAL_H }}>
 
         {/* Trophy + FINAL label */}
-        <div className="flex flex-col items-center gap-2.5">
-          <Trophy
-            className="w-9 h-9 text-[#e8b84b]/45"
-            strokeWidth={1.25}
-          />
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative w-28 h-[204px]">
+            <Image
+              src="/trophy-wc.png"
+              alt="FIFA World Cup Trophy"
+              fill
+              sizes="112px"
+              className="object-contain"
+              style={{
+                WebkitMaskImage: 'radial-gradient(ellipse 56% 68% at 50% 48%, black 38%, transparent 74%)',
+                maskImage:       'radial-gradient(ellipse 56% 68% at 50% 48%, black 38%, transparent 74%)',
+              }}
+              priority
+            />
+          </div>
           <span
             className="text-[28px] font-black tracking-[0.35em] uppercase leading-none"
             style={{
@@ -454,7 +465,28 @@ export function TournamentBracket({ initialMatches, groups = [] }: Props) {
   const GAP = 24   // px gap between columns (connectors extend 16px outside their column)
 
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden">
+      {/* Stadium background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image
+          src="/bracket-bg.png"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-center"
+          priority
+        />
+        {/* Dark gradient overlay — darker at edges, slightly open in the middle */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(6,11,20,0.94) 0%, rgba(6,11,20,0.78) 30%, rgba(6,11,20,0.78) 70%, rgba(6,11,20,0.95) 100%)',
+          }}
+        />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10">
       <MatchDetailDrawer
         matchId={selectedMatchId}
         onClose={() => setSelectedMatchId(null)}
@@ -509,8 +541,11 @@ export function TournamentBracket({ initialMatches, groups = [] }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Bracket */}
-      <div className="overflow-x-auto pb-8 pt-5">
+      {/* Bracket — click empty area to clear team highlight */}
+      <div
+        className="overflow-x-auto pb-8 pt-5"
+        onClick={() => selectedTeamId && setSelectedTeamId(null)}
+      >
         <div className="flex items-start min-w-max px-5" style={{ gap: GAP }}>
 
           {/* Groups A–F */}
@@ -596,6 +631,7 @@ export function TournamentBracket({ initialMatches, groups = [] }: Props) {
           Your prediction
         </span>
       </div>
+      </div>{/* end content z-10 */}
     </div>
   )
 }

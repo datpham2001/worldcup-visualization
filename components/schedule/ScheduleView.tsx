@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MatchCard } from './MatchCard'
 import { MatchDetailDrawer } from '@/components/bracket/MatchDetailDrawer'
+import { TeamFlag } from '@/components/shared/TeamFlag'
 import type { Match } from '@/types/match'
+import type { Team } from '@/types/team'
 import { cn } from '@/lib/utils'
-import { RefreshCw, Calendar, Globe2, ChevronDown, ChevronUp } from 'lucide-react'
+import { RefreshCw, Calendar, Globe2, ChevronDown, ChevronUp, Search, X, Users } from 'lucide-react'
 
 // ─── Round detection ──────────────────────────────────────────────────────────
 function getRoundId(m: Match): RoundFilter {
@@ -36,8 +38,12 @@ function byRound(matches: Match[], r: RoundFilter): Match[] {
   if (r === 'all') return matches
   return matches.filter(m => getRoundId(m) === r)
 }
-function filter(matches: Match[], s: StatusFilter, r: RoundFilter): Match[] {
-  return byRound(byStatus(matches, s), r)
+function byTeam(matches: Match[], teamId: string | null): Match[] {
+  if (!teamId) return matches
+  return matches.filter(m => m.homeTeam?.id === teamId || m.awayTeam?.id === teamId)
+}
+function filter(matches: Match[], s: StatusFilter, r: RoundFilter, teamId: string | null): Match[] {
+  return byTeam(byRound(byStatus(matches, s), r), teamId)
 }
 
 // ─── VN date helpers ──────────────────────────────────────────────────────────
@@ -108,6 +114,163 @@ function Chip({ active, label, count, accent = '#6090ff', dot, disabled, onClick
         </span>
       )}
     </button>
+  )
+}
+
+// ─── Team picker (combobox) ───────────────────────────────────────────────────
+interface TeamPickerProps {
+  teams: Team[]
+  selectedId: string | null
+  onChange: (id: string | null) => void
+}
+
+function TeamPicker({ teams, selectedId, onChange }: TeamPickerProps) {
+  const [open, setOpen]   = useState(false)
+  const [query, setQuery] = useState('')
+  const inputRef          = useRef<HTMLInputElement>(null)
+  const containerRef      = useRef<HTMLDivElement>(null)
+
+  const selected = useMemo(() => teams.find(t => t.id === selectedId) ?? null, [teams, selectedId])
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim()
+    if (!q) return teams
+    return teams.filter(
+      t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q) || t.shortName?.toLowerCase().includes(q)
+    )
+  }, [teams, query])
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
+
+  const pick = (id: string) => {
+    onChange(id === selectedId ? null : id)
+    setOpen(false)
+    setQuery('')
+  }
+
+  const openPicker = () => {
+    setQuery('')
+    setOpen(true)
+  }
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
+      {/* Trigger */}
+      {selected ? (
+        <div
+          className="flex items-center gap-0 h-[34px] rounded-full border overflow-hidden"
+          style={{ background: 'rgba(96,144,255,0.12)', border: '1px solid rgba(96,144,255,0.45)' }}
+        >
+          <button
+            onClick={openPicker}
+            className="flex items-center gap-2 h-full pl-2 pr-2.5 text-[12px] font-semibold transition-colors"
+            style={{ color: '#90b8ff' }}
+          >
+            <TeamFlag logoUrl={selected.logoUrl} name={selected.name} size="sm" />
+            <span>{selected.name}</span>
+          </button>
+          <button
+            onClick={() => onChange(null)}
+            className="flex items-center justify-center h-full px-2 border-l transition-colors hover:bg-white/10"
+            style={{ borderColor: 'rgba(96,144,255,0.3)', color: 'rgba(144,184,255,0.6)' }}
+            aria-label="Clear team filter"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={openPicker}
+          className={cn(
+            'flex items-center gap-1.5 h-[34px] px-3 rounded-full text-[12px] font-semibold border transition-all duration-200',
+            open
+              ? 'bg-bg-elevated border-accent-blue/40 text-text-primary'
+              : 'bg-bg-elevated border-border text-text-secondary hover:text-text-primary hover:border-white/20',
+          )}
+        >
+          <Users className="w-3.5 h-3.5 opacity-60" />
+          Team
+          <ChevronDown className={cn('w-3 h-3 opacity-50 transition-transform duration-150', open && 'rotate-180')} />
+        </button>
+      )}
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute top-[calc(100%+6px)] left-0 z-50 w-[260px] rounded-xl border border-border overflow-hidden shadow-2xl"
+            style={{ background: '#0d1929' }}
+          >
+            {/* Search input */}
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
+              <Search className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Type team name…"
+                className="flex-1 bg-transparent text-[12px] text-text-primary placeholder:text-text-muted outline-none"
+              />
+              {query && (
+                <button onClick={() => setQuery('')} className="text-text-muted hover:text-text-primary transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Team list */}
+            <div className="overflow-y-auto max-h-[280px] py-1 scrollbar-hide">
+              {filtered.length === 0 ? (
+                <div className="py-8 text-center text-text-muted text-[12px]">No teams found</div>
+              ) : filtered.map(team => (
+                <button
+                  key={team.id}
+                  onClick={() => pick(team.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100',
+                    team.id === selectedId
+                      ? 'bg-accent-blue/15'
+                      : 'hover:bg-white/5',
+                  )}
+                >
+                  <TeamFlag logoUrl={team.logoUrl} name={team.name} size="sm" />
+                  <span className={cn(
+                    'flex-1 text-[12px] font-medium truncate',
+                    team.id === selectedId ? 'text-accent-blue' : 'text-text-primary',
+                  )}>
+                    {team.name}
+                  </span>
+                  <span className={cn(
+                    'text-[10px] font-mono shrink-0',
+                    team.id === selectedId ? 'text-accent-blue/70' : 'text-text-muted',
+                  )}>
+                    {team.abbreviation}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -247,7 +410,7 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
             const latest = completed.filter(m => vnKey(m.date) === latestKey)
             return (
               <div className="space-y-6">
-                <DateSection label={vnLabel(latestKey)} matches={latest} />
+                <DateSection label={vnLabel(latestKey)} matches={latest} onMatchDetail={onMatchDetail} />
                 {completed.length > latest.length && (
                   <AnimatePresence>
                     {showAllCompleted && (
@@ -281,14 +444,17 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
 // ─── Filter strip ─────────────────────────────────────────────────────────────
 interface FilterStripProps {
   source: Match[]
+  allTeams: Team[]
   status: StatusFilter
   round: RoundFilter
+  teamId: string | null
   showStage: boolean
   onStatus: (s: StatusFilter) => void
   onRound: (r: RoundFilter) => void
+  onTeam: (id: string | null) => void
 }
 
-function FilterStrip({ source, status, round, showStage, onStatus, onRound }: FilterStripProps) {
+function FilterStrip({ source, allTeams, status, round, teamId, showStage, onStatus, onRound, onTeam }: FilterStripProps) {
   const roundFiltered  = useMemo(() => byRound(source, round), [source, round])
   const statusFiltered = useMemo(() => byStatus(source, status), [source, status])
 
@@ -324,6 +490,7 @@ function FilterStrip({ source, status, round, showStage, onStatus, onRound }: Fi
 
   return (
     <div className="mb-6 space-y-1.5">
+      {/* Row 1: status chips — full width, no sibling stealing space */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {statusChips.map(c => (
           <Chip
@@ -338,21 +505,27 @@ function FilterStrip({ source, status, round, showStage, onStatus, onRound }: Fi
           />
         ))}
       </div>
-      {showStage && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          {roundChips.map(c => (
-            <Chip
-              key={c.id}
-              active={round === c.id}
-              label={c.label}
-              count={c.id !== 'all' ? c.count : undefined}
-              accent="#e8b84b"
-              disabled={c.id !== 'all' && c.count === 0}
-              onClick={() => onRound(c.id)}
-            />
-          ))}
-        </div>
-      )}
+
+      {/* Row 2: team picker on the LEFT (always visible) + round chips scroll to the right */}
+      {/* TeamPicker must be BEFORE any overflow-x-auto sibling so it's never cut off */}
+      <div className="flex items-center gap-2">
+        <TeamPicker teams={allTeams} selectedId={teamId} onChange={onTeam} />
+        {showStage && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide flex-1 min-w-0">
+            {roundChips.map(c => (
+              <Chip
+                key={c.id}
+                active={round === c.id}
+                label={c.label}
+                count={c.id !== 'all' ? c.count : undefined}
+                accent="#e8b84b"
+                disabled={c.id !== 'all' && c.count === 0}
+                onClick={() => onRound(c.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -367,6 +540,7 @@ export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
   const [primaryTab, setPrimaryTab]       = useState<'today' | 'all'>('today')
   const [status,     setStatus]           = useState<StatusFilter>('all')
   const [round,      setRound]            = useState<RoundFilter>('all')
+  const [teamId,     setTeamId]           = useState<string | null>(null)
   const [today, setToday]                 = useState<Match[]>(initialToday)
   const [all,   setAll]                   = useState<Match[]>(initialAll)
   const [refreshing, setRefreshing]       = useState(false)
@@ -395,12 +569,22 @@ export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
   }, [refresh, pollMs])
 
   // Reset completed toggle when switching tabs or filters
-  useEffect(() => setShowAllCompleted(false), [primaryTab, status, round])
+  useEffect(() => setShowAllCompleted(false), [primaryTab, status, round, teamId])
   // Reset stage filter when switching to Today tab (stage filter is hidden there)
   useEffect(() => { if (primaryTab === 'today') setRound('all') }, [primaryTab])
 
+  // All unique teams sorted alphabetically (from the full 'all' list for completeness)
+  const allTeams = useMemo<Team[]>(() => {
+    const map = new Map<string, Team>()
+    for (const m of all) {
+      if (m.homeTeam?.id) map.set(m.homeTeam.id, m.homeTeam)
+      if (m.awayTeam?.id) map.set(m.awayTeam.id, m.awayTeam)
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+  }, [all])
+
   const source   = primaryTab === 'today' ? today : all
-  const filtered = useMemo(() => filter(source, status, round), [source, status, round])
+  const filtered = useMemo(() => filter(source, status, round, teamId), [source, status, round, teamId])
 
   return (
     <div>
@@ -451,11 +635,14 @@ export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
       {/* ── Filter chips ── */}
       <FilterStrip
         source={source}
+        allTeams={allTeams}
         status={status}
         round={round}
+        teamId={teamId}
         showStage={primaryTab === 'all'}
         onStatus={(s) => setStatus(s)}
         onRound={(r) => setRound(r)}
+        onTeam={setTeamId}
       />
 
       {/* ── Divider ── */}
@@ -464,7 +651,7 @@ export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
       {/* ── Match list ── */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={`${primaryTab}-${status}-${round}`}
+          key={`${primaryTab}-${status}-${round}-${teamId ?? ''}`}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
