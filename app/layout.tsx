@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Navbar } from '@/components/shared/Navbar'
+import { TimezoneProvider } from '@/lib/hooks/useTimezone'
 import './globals.css'
 
 const geistSans = Geist({
@@ -22,8 +23,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen bg-bg-base text-text-primary antialiased">
-        <Navbar />
-        {children}
+        <TimezoneProvider>
+          <Navbar />
+          {children}
+        </TimezoneProvider>
       </body>
     </html>
   )

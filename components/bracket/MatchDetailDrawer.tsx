@@ -9,6 +9,8 @@ import { MatchStats } from '@/components/match/MatchStats'
 import { MatchLineup } from '@/components/match/MatchLineup'
 import type { MatchDetail, MatchVideo } from '@/types/match'
 import { cn } from '@/lib/utils'
+import { useTimezone } from '@/lib/hooks/useTimezone'
+import { fmtTime, fmtDateLong } from '@/lib/timezone'
 
 interface Props {
   matchId: string | null
@@ -17,25 +19,12 @@ interface Props {
 
 type DrawerTab = 'events' | 'stats' | 'lineup'
 
-// ─── Time helpers (Vietnam ICT = UTC+7) ───────────────────────────────────────
-
-function ictTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
-
-function ictDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
-
 // ─── Score header ─────────────────────────────────────────────────────────────
 
 function ModalHeader({ match }: { match: MatchDetail }) {
-  const homeWon = match.status === 'post' && (match.homeScore ?? 0) > (match.awayScore ?? 0)
-  const awayWon = match.status === 'post' && (match.awayScore ?? 0) > (match.homeScore ?? 0)
+  const { timezone } = useTimezone()
+  const homeWon = match.status === 'post' && match.homeWinner
+  const awayWon = match.status === 'post' && match.awayWinner
 
   return (
     <div className="px-6 py-5 border-b border-white/6">
@@ -75,10 +64,10 @@ function ModalHeader({ match }: { match: MatchDetail }) {
               <span className="text-white/20 text-base font-mono">VS</span>
               <div className="flex flex-col items-center gap-0.5 text-center">
                 <span className="text-[12px] font-bold text-[#e8b84b] font-mono">
-                  {ictTime(match.date)} ICT
+                  {fmtTime(match.date, timezone.tz, timezone.abbr)}
                 </span>
                 <span className="text-[10px] text-white/30 font-mono">
-                  {ictDate(match.date)}
+                  {fmtDateLong(match.date, timezone.tz)}
                 </span>
               </div>
             </div>
@@ -99,7 +88,7 @@ function ModalHeader({ match }: { match: MatchDetail }) {
         {match.status === 'post' && (
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {ictDate(match.date)}
+            {fmtDateLong(match.date, timezone.tz)}
           </span>
         )}
         {match.venue && (
@@ -244,13 +233,14 @@ function ModalSkeleton() {
 // ─── Pre-match info ───────────────────────────────────────────────────────────
 
 function PreMatchInfo({ match }: { match: MatchDetail }) {
+  const { timezone } = useTimezone()
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-4 text-center px-8">
       <div className="text-5xl">⏰</div>
       <div>
         <p className="text-white/55 text-[15px] font-semibold mb-1">Kick-off</p>
-        <p className="text-[#e8b84b] text-[22px] font-bold font-mono">{ictTime(match.date)} ICT</p>
-        <p className="text-white/30 text-[12px] font-mono mt-1">{ictDate(match.date)}</p>
+        <p className="text-[#e8b84b] text-[22px] font-bold font-mono">{fmtTime(match.date, timezone.tz, timezone.abbr)}</p>
+        <p className="text-white/30 text-[12px] font-mono mt-1">{fmtDateLong(match.date, timezone.tz)}</p>
       </div>
       {match.venue && (
         <p className="text-white/25 text-[11px] flex items-center gap-1.5">

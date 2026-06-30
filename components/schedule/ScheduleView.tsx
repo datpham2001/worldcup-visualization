@@ -9,6 +9,8 @@ import type { Match } from '@/types/match'
 import type { Team } from '@/types/team'
 import { cn } from '@/lib/utils'
 import { RefreshCw, Calendar, Globe2, ChevronDown, ChevronUp, Search, X, Users } from 'lucide-react'
+import { useTimezone } from '@/lib/hooks/useTimezone'
+import { fmtDateKey, fmtDateLabel } from '@/lib/timezone'
 
 // ─── Round detection ──────────────────────────────────────────────────────────
 function getRoundId(m: Match): RoundFilter {
@@ -46,26 +48,11 @@ function filter(matches: Match[], s: StatusFilter, r: RoundFilter, teamId: strin
   return byTeam(byRound(byStatus(matches, s), r), teamId)
 }
 
-// ─── VN date helpers ──────────────────────────────────────────────────────────
-function vnKey(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' })
-}
-function vnLabel(key: string) {
-  const now = new Date()
-  const tz  = 'Asia/Ho_Chi_Minh'
-  const tok  = now.toLocaleDateString('en-CA', { timeZone: tz })
-  const tmk  = new Date(now.getTime() + 86400000).toLocaleDateString('en-CA', { timeZone: tz })
-  const ysk  = new Date(now.getTime() - 86400000).toLocaleDateString('en-CA', { timeZone: tz })
-  const fmt  = new Date(key + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
-  if (key === tok) return `Today · ${fmt}`
-  if (key === tmk) return `Tomorrow · ${fmt}`
-  if (key === ysk) return `Yesterday · ${fmt}`
-  return fmt
-}
-function groupByVNDate(matches: Match[], desc = false) {
+// ─── Date helpers (timezone-aware) ───────────────────────────────────────────
+function groupByDate(matches: Match[], tz: string, desc = false) {
   const map = new Map<string, Match[]>()
   for (const m of matches) {
-    const k = vnKey(m.date)
+    const k = fmtDateKey(m.date, tz)
     map.set(k, [...(map.get(k) || []), m])
   }
   return [...map.entries()]
@@ -304,11 +291,12 @@ function DateSection({ label, matches, onMatchDetail }: DateSectionProps) {
 interface MatchListProps {
   matches: Match[]
   status: StatusFilter
+  tz: string
   showAllCompleted: boolean
   onToggleCompleted: () => void
   onMatchDetail?: (id: string) => void
 }
-function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMatchDetail }: MatchListProps) {
+function MatchList({ matches, status, tz, showAllCompleted, onToggleCompleted, onMatchDetail }: MatchListProps) {
   const live      = matches.filter(m => m.status === 'in')
   const upcoming  = matches.filter(m => m.status === 'pre').sort((a, b) => +new Date(a.date) - +new Date(b.date))
   const completed = matches.filter(m => m.status === 'post').sort((a, b) => +new Date(b.date) - +new Date(a.date))
@@ -326,8 +314,8 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
   if (status === 'live') {
     return (
       <div className="space-y-6">
-        {groupByVNDate(live).map(({ key, matches }) => (
-          <DateSection key={key} label={vnLabel(key)} matches={matches} onMatchDetail={onMatchDetail} />
+        {groupByDate(live, tz).map(({ key, matches }) => (
+          <DateSection key={key} label={fmtDateLabel(key, tz)} matches={matches} onMatchDetail={onMatchDetail} />
         ))}
       </div>
     )
@@ -335,8 +323,8 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
   if (status === 'upcoming') {
     return (
       <div className="space-y-6">
-        {groupByVNDate(upcoming).map(({ key, matches }) => (
-          <DateSection key={key} label={vnLabel(key)} matches={matches} onMatchDetail={onMatchDetail} />
+        {groupByDate(upcoming, tz).map(({ key, matches }) => (
+          <DateSection key={key} label={fmtDateLabel(key, tz)} matches={matches} onMatchDetail={onMatchDetail} />
         ))}
       </div>
     )
@@ -344,8 +332,8 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
   if (status === 'completed') {
     return (
       <div className="space-y-6">
-        {groupByVNDate(completed, true).map(({ key, matches }) => (
-          <DateSection key={key} label={vnLabel(key)} matches={matches} onMatchDetail={onMatchDetail} />
+        {groupByDate(completed, tz, true).map(({ key, matches }) => (
+          <DateSection key={key} label={fmtDateLabel(key, tz)} matches={matches} onMatchDetail={onMatchDetail} />
         ))}
       </div>
     )
@@ -382,8 +370,8 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,144,255,0.15)', color: '#6090ff', border: '1px solid rgba(96,144,255,0.3)' }}>{upcoming.length}</span>
           </div>
           <div className="space-y-6">
-            {groupByVNDate(upcoming).map(({ key, matches }) => (
-              <DateSection key={key} label={vnLabel(key)} matches={matches} onMatchDetail={onMatchDetail} />
+            {groupByDate(upcoming, tz).map(({ key, matches }) => (
+              <DateSection key={key} label={fmtDateLabel(key, tz)} matches={matches} onMatchDetail={onMatchDetail} />
             ))}
           </div>
         </div>
@@ -406,11 +394,11 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
 
           {/* Always show the most-recent day */}
           {(() => {
-            const latestKey = vnKey(completed[0].date)
-            const latest = completed.filter(m => vnKey(m.date) === latestKey)
+            const latestKey = fmtDateKey(completed[0].date, tz)
+            const latest = completed.filter(m => fmtDateKey(m.date, tz) === latestKey)
             return (
               <div className="space-y-6">
-                <DateSection label={vnLabel(latestKey)} matches={latest} onMatchDetail={onMatchDetail} />
+                <DateSection label={fmtDateLabel(latestKey, tz)} matches={latest} onMatchDetail={onMatchDetail} />
                 {completed.length > latest.length && (
                   <AnimatePresence>
                     {showAllCompleted && (
@@ -419,8 +407,8 @@ function MatchList({ matches, status, showAllCompleted, onToggleCompleted, onMat
                         exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}
                         className="space-y-6 overflow-hidden"
                       >
-                        {groupByVNDate(completed.filter(m => vnKey(m.date) !== latestKey), true).map(({ key, matches }) => (
-                          <DateSection key={key} label={vnLabel(key)} matches={matches} onMatchDetail={onMatchDetail} />
+                        {groupByDate(completed.filter(m => fmtDateKey(m.date, tz) !== latestKey), tz, true).map(({ key, matches }) => (
+                          <DateSection key={key} label={fmtDateLabel(key, tz)} matches={matches} onMatchDetail={onMatchDetail} />
                         ))}
                       </motion.div>
                     )}
@@ -537,6 +525,7 @@ interface ScheduleViewProps {
 }
 
 export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
+  const { timezone } = useTimezone()
   const [primaryTab, setPrimaryTab]       = useState<'today' | 'all'>('today')
   const [status,     setStatus]           = useState<StatusFilter>('all')
   const [round,      setRound]            = useState<RoundFilter>('all')
@@ -660,6 +649,7 @@ export function ScheduleView({ initialToday, initialAll }: ScheduleViewProps) {
           <MatchList
             matches={filtered}
             status={status}
+            tz={timezone.tz}
             showAllCompleted={showAllCompleted}
             onToggleCompleted={() => setShowAllCompleted(v => !v)}
             onMatchDetail={setSelectedMatchId}

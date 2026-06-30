@@ -5,21 +5,8 @@ import { cn } from '@/lib/utils'
 import { TeamFlag } from '@/components/shared/TeamFlag'
 import type { Match } from '@/types/match'
 import { MapPin } from 'lucide-react'
-
-// ─── Time helpers (Vietnam = UTC+7) ──────────────────────────────────────────
-function vnTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString('en-GB', {
-    hour: '2-digit', minute: '2-digit', hour12: false,
-    timeZone: 'Asia/Ho_Chi_Minh',
-  }) + ' ICT'
-}
-
-function vnDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    timeZone: 'Asia/Ho_Chi_Minh',
-  })
-}
+import { useTimezone } from '@/lib/hooks/useTimezone'
+import { fmtTime, fmtDate } from '@/lib/timezone'
 
 // ─── Team column ──────────────────────────────────────────────────────────────
 interface TeamColProps {
@@ -99,6 +86,7 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, onMatchDetail }: MatchCardProps) {
+  const { timezone } = useTimezone()
   const isLive = match.status === 'in'
   const isDone = match.status === 'post'
   const isPre  = match.status === 'pre'
@@ -145,7 +133,7 @@ export function MatchCard({ match, onMatchDetail }: MatchCardProps) {
           )}
           {isPre && (
             <span className="text-[13px] font-mono font-bold" style={{ color: '#e8b84b' }}>
-              {vnTime(match.date)}
+              {fmtTime(match.date, timezone.tz, timezone.abbr)}
             </span>
           )}
 
@@ -177,9 +165,9 @@ export function MatchCard({ match, onMatchDetail }: MatchCardProps) {
           </div>
           <span className="text-[11px] font-mono text-text-muted shrink-0 whitespace-nowrap">
             {isDone
-              ? `${vnDate(match.date)} · ${vnTime(match.date)}`
+              ? `${fmtDate(match.date, timezone.tz)} · ${fmtTime(match.date, timezone.tz, timezone.abbr)}`
               : isPre
-              ? vnDate(match.date)
+              ? fmtDate(match.date, timezone.tz)
               : ''}
           </span>
         </div>
