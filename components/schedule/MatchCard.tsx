@@ -31,11 +31,10 @@ interface TeamColProps {
 }
 
 function TeamCol({ match, side, homeScore, awayScore, isDone }: TeamColProps) {
-  const team  = side === 'home' ? match.homeTeam : match.awayTeam
-  const score = side === 'home' ? homeScore : awayScore
-  const otherScore = side === 'home' ? awayScore : homeScore
-  const isWinner = isDone && score !== null && otherScore !== null && score > otherScore
-  const isLoser  = isDone && score !== null && otherScore !== null && score < otherScore
+  const team     = side === 'home' ? match.homeTeam : match.awayTeam
+  const score    = side === 'home' ? homeScore : awayScore
+  const isWinner = isDone && (side === 'home' ? match.homeWinner : match.awayWinner)
+  const isLoser  = isDone && (side === 'home' ? match.awayWinner : match.homeWinner)
   const isReverse = side === 'away'
 
   return (
@@ -65,26 +64,30 @@ function TeamCol({ match, side, homeScore, awayScore, isDone }: TeamColProps) {
 
 // ─── Score center ─────────────────────────────────────────────────────────────
 function ScoreCenter({ match, isLive, isDone }: { match: Match; isLive: boolean; isDone: boolean }) {
-  const { homeScore, awayScore } = match
+  const { homeScore, awayScore, homeWinner, awayWinner, homePenaltyScore, awayPenaltyScore } = match
   if (!isLive && !isDone) {
     return <span className="text-text-muted font-mono text-xs font-bold tracking-wider px-1">VS</span>
   }
-
-  const homeWins = isDone && homeScore !== null && awayScore !== null && homeScore > awayScore
-  const awayWins = isDone && homeScore !== null && awayScore !== null && awayScore > homeScore
 
   const scoreColor = (wins: boolean, other: boolean) =>
     isLive ? 'text-white' : wins ? 'text-white' : other ? 'text-text-muted' : 'text-text-secondary'
 
   return (
-    <div className="flex items-center gap-[3px] shrink-0 px-2">
-      <span className={cn('font-display text-[28px] leading-none tabular-nums', scoreColor(homeWins, awayWins))}>
-        {homeScore ?? '0'}
-      </span>
-      <span className="text-text-muted font-mono text-sm pb-0.5">—</span>
-      <span className={cn('font-display text-[28px] leading-none tabular-nums', scoreColor(awayWins, homeWins))}>
-        {awayScore ?? '0'}
-      </span>
+    <div className="flex flex-col items-center shrink-0 px-2 gap-0.5">
+      <div className="flex items-center gap-[3px]">
+        <span className={cn('font-display text-[28px] leading-none tabular-nums', scoreColor(homeWinner, awayWinner))}>
+          {homeScore ?? '0'}
+        </span>
+        <span className="text-text-muted font-mono text-sm pb-0.5">—</span>
+        <span className={cn('font-display text-[28px] leading-none tabular-nums', scoreColor(awayWinner, homeWinner))}>
+          {awayScore ?? '0'}
+        </span>
+      </div>
+      {homePenaltyScore !== null && awayPenaltyScore !== null && (
+        <span className="text-[10px] font-mono font-bold tracking-wide" style={{ color: '#e8b84b' }}>
+          ({homePenaltyScore}–{awayPenaltyScore} pens)
+        </span>
+      )}
     </div>
   )
 }
@@ -130,8 +133,14 @@ export function MatchCard({ match, onMatchDetail }: MatchCardProps) {
             </div>
           )}
           {isDone && (
-            <span className="text-[11px] font-mono text-text-muted bg-bg-elevated border border-border px-2 py-0.5 rounded-full">
-              FT
+            <span
+              className="text-[11px] font-mono px-2 py-0.5 rounded-full border"
+              style={match.statusDisplay !== 'FT'
+                ? { background: 'rgba(232,184,75,0.12)', border: '1px solid rgba(232,184,75,0.35)', color: '#e8b84b' }
+                : { background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }
+              }
+            >
+              {match.statusDisplay}
             </span>
           )}
           {isPre && (

@@ -24,10 +24,15 @@ function getStatus(event: Record<string, unknown>): MatchStatus {
 function getStatusDisplay(event: Record<string, unknown>): string {
   const status = event.status as Record<string, unknown> | undefined
   const typeState = (status?.type as Record<string, unknown> | undefined)?.state as string | undefined
-  const displayClock = (status?.type as Record<string, unknown> | undefined)?.shortDetail as string | undefined
+  const shortDetail = (status?.type as Record<string, unknown> | undefined)?.shortDetail as string | undefined
 
-  if (typeState === 'post') return 'FT'
-  if (typeState === 'in') return displayClock || 'LIVE'
+  if (typeState === 'post') {
+    if (!shortDetail) return 'FT'
+    const d = shortDetail.toLowerCase()
+    if (d === 'ft' || d.includes('full time')) return 'FT'
+    return shortDetail  // "FT-Pens", "AET", etc.
+  }
+  if (typeState === 'in') return shortDetail || 'LIVE'
 
   const date = event.date as string | undefined
   if (date) {
@@ -57,6 +62,10 @@ export function transformEvent(raw: unknown): Match | null {
     const status = getStatus(event)
     const homeScore = status !== 'pre' ? Number((home.score as string) || '0') : null
     const awayScore = status !== 'pre' ? Number((away.score as string) || '0') : null
+    const homeWinner = (home.winner as boolean) ?? false
+    const awayWinner = (away.winner as boolean) ?? false
+    const homePenaltyScore = home.shootoutScore != null ? Number(home.shootoutScore) : null
+    const awayPenaltyScore = away.shootoutScore != null ? Number(away.shootoutScore) : null
 
     const venue = competition.venue as Record<string, unknown> | undefined
     const venueFullName = venue?.fullName as string || ''
@@ -90,6 +99,10 @@ export function transformEvent(raw: unknown): Match | null {
       group,
       round: humanRound(rawSlug) || 'Group Stage',
       seasonType: seasonType || 1,
+      homeWinner,
+      awayWinner,
+      homePenaltyScore,
+      awayPenaltyScore,
     }
   } catch {
     return null

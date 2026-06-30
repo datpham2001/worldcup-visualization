@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Calendar, BarChart2, Star, GitBranch, ArrowUpRight, Target, Zap, Trophy } from 'lucide-react'
+import { Calendar, BarChart2, Star, GitBranch, ArrowUpRight, Zap, Trophy } from 'lucide-react'
 
 const E = [0.22, 1, 0.36, 1] as const
 
@@ -88,13 +88,12 @@ function StatPill({ value, label, accent, icon, delay }: StatItem) {
   )
 }
 
-interface StatsRowProps { todayCount: number; liveCount: number; totalGoals: number }
-function StatsRow({ todayCount, liveCount, totalGoals }: StatsRowProps) {
+interface StatsRowProps { todayCount: number; liveCount: number }
+function StatsRow({ todayCount, liveCount }: StatsRowProps) {
   const items: StatItem[] = [
-    { value: '48',                    label: 'Nations',   accent: '#6090ff', icon: <Star className="w-3.5 h-3.5" />,     delay: 0.65 },
-    { value: '104',                   label: 'Matches',   accent: '#30d97a', icon: <Calendar className="w-3.5 h-3.5" />, delay: 0.70 },
-    { value: String(totalGoals || 0), label: 'Goals',     accent: '#e8b84b', icon: <Target className="w-3.5 h-3.5" />,   delay: 0.75 },
-    { value: String(todayCount),      label: liveCount > 0 ? 'Live Now' : 'Today', accent: liveCount > 0 ? '#ef4444' : '#c060ff', icon: <Zap className="w-3.5 h-3.5" />, delay: 0.80 },
+    { value: '48',              label: 'Nations',   accent: '#6090ff', icon: <Star className="w-3.5 h-3.5" />,     delay: 0.65 },
+    { value: '104',             label: 'Matches',   accent: '#30d97a', icon: <Calendar className="w-3.5 h-3.5" />, delay: 0.70 },
+    { value: String(todayCount), label: liveCount > 0 ? 'Live Now' : 'Today', accent: liveCount > 0 ? '#ef4444' : '#c060ff', icon: <Zap className="w-3.5 h-3.5" />, delay: 0.75 },
   ]
   return (
     <div className="flex gap-2.5 justify-center flex-wrap">
@@ -371,9 +370,9 @@ function NavCards({ todayCount, liveCount }: { todayCount: number; liveCount: nu
 }
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
-interface HeroPageProps { todayCount: number; liveCount: number; totalGoals: number }
+interface HeroPageProps { todayCount: number; liveCount: number }
 
-export function HeroPage({ todayCount, liveCount, totalGoals }: HeroPageProps) {
+export function HeroPage({ todayCount, liveCount }: HeroPageProps) {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ backgroundColor: '#060a12' }}>
 
@@ -450,7 +449,7 @@ export function HeroPage({ todayCount, liveCount, totalGoals }: HeroPageProps) {
           </div>
 
           <HostNations />
-          <StatsRow todayCount={todayCount} liveCount={liveCount} totalGoals={totalGoals} />
+          <StatsRow todayCount={todayCount} liveCount={liveCount} />
         </div>
 
         {/* Nav cards */}

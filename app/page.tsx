@@ -10,13 +10,11 @@ export default async function HomePage() {
   const todayMatches = await fetchScoreboard(todayParam)
 
   const liveCount = todayMatches.filter(m => m.status === 'in').length
-  const totalGoals = todayMatches.reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0)
 
   return (
     <HeroPage
       todayCount={todayMatches.length}
       liveCount={liveCount}
-      totalGoals={totalGoals}
     />
   )
 }

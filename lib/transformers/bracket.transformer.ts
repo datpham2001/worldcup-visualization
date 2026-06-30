@@ -42,10 +42,8 @@ export function matchesToBracketData(matches: Match[]): BracketData {
 
     const bracketMatches: BracketMatch[] = sorted.map((m, i) => {
       const isDone = m.status === 'post'
-      const homeWins =
-        isDone && m.homeScore !== null && m.awayScore !== null && m.homeScore > m.awayScore
-      const awayWins =
-        isDone && m.homeScore !== null && m.awayScore !== null && m.awayScore > m.homeScore
+      const homeWins = isDone && m.homeWinner
+      const awayWins = isDone && m.awayWinner
 
       return {
         id: m.id,

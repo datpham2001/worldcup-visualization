@@ -16,6 +16,10 @@ export interface Match {
   group: string | null
   round: string
   seasonType: number
+  homeWinner: boolean
+  awayWinner: boolean
+  homePenaltyScore: number | null
+  awayPenaltyScore: number | null
 }
 
 export interface MatchEvent {
