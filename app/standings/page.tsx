@@ -1,10 +1,23 @@
+import type { Metadata } from 'next'
 import { fetchStandings } from '@/lib/api/standings'
 import { PageContainer } from '@/components/shared/PageContainer'
 import { SectionHeading } from '@/components/shared/SectionHeading'
 import { GroupGrid } from '@/components/standings/GroupGrid'
 import { ErrorState } from '@/components/shared/ErrorState'
+import { OG_IMAGE } from '@/lib/seo'
 
 export const revalidate = 300
+
+export const metadata: Metadata = {
+  title: 'Group Standings',
+  description: 'Live FIFA World Cup 2026 group stage standings. Track wins, draws, losses, goal difference, and points for all 12 groups.',
+  openGraph: {
+    title: 'FIFA World Cup 2026 Group Standings',
+    description: 'Live group standings — wins, draws, losses, goal difference, and points for all 12 groups.',
+    images: [OG_IMAGE],
+  },
+  alternates: { canonical: '/standings' },
+}
 
 export default async function StandingsPage() {
   const groups = await fetchStandings()

@@ -1,10 +1,23 @@
+import type { Metadata } from 'next'
 import { fetchAllMatches } from '@/lib/api/all-matches'
 import { fetchStandings } from '@/lib/api/standings'
 import { PageContainer } from '@/components/shared/PageContainer'
 import { SectionHeading } from '@/components/shared/SectionHeading'
 import { TournamentBracket } from '@/components/bracket/TournamentBracket'
+import { OG_IMAGE } from '@/lib/seo'
 
 export const revalidate = 60
+
+export const metadata: Metadata = {
+  title: 'Tournament Bracket',
+  description: 'Interactive FIFA World Cup 2026 knockout bracket. Follow every team from the Round of 32 through to the Final. Click teams to trace their path.',
+  openGraph: {
+    title: 'FIFA World Cup 2026 Tournament Bracket',
+    description: 'Interactive knockout bracket — R32 through to the Final. Updated live.',
+    images: [OG_IMAGE],
+  },
+  alternates: { canonical: '/bracket' },
+}
 
 export default async function BracketPage() {
   const [allMatches, groups] = await Promise.all([
