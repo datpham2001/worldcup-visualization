@@ -7,11 +7,13 @@ interface PlayerTableProps {
   highlightStat: 'goals' | 'assists'
   mode: 'players'
   enhancedPhotos?: Record<string, string | null>
+  onPlayerClick?: (scorer: Scorer) => void
 }
 
 interface TeamTableProps {
   teams: TeamStat[]
   mode: 'teams'
+  onTeamClick?: (stat: TeamStat) => void
 }
 
 type Props = PlayerTableProps | TeamTableProps
@@ -30,7 +32,12 @@ export function LeaderboardTable(props: Props) {
     return (
       <div className="bg-bg-surface border border-border rounded-xl overflow-hidden">
         {props.teams.map((stat, i) => (
-          <TeamStatRow key={stat.team.id} stat={stat} index={i} />
+          <TeamStatRow
+            key={stat.team.id}
+            stat={stat}
+            index={i}
+            onClick={props.onTeamClick ? () => props.onTeamClick!(stat) : undefined}
+          />
         ))}
       </div>
     )
@@ -48,6 +55,7 @@ export function LeaderboardTable(props: Props) {
           highlightStat={props.highlightStat}
           index={i}
           enhancedPhotoUrl={props.enhancedPhotos?.[scorer.athlete.id]}
+          onClick={props.onPlayerClick ? () => props.onPlayerClick!(scorer) : undefined}
         />
       ))}
     </div>

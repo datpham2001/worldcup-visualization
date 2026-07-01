@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { ChevronRight } from 'lucide-react'
 import { TeamFlag } from '@/components/shared/TeamFlag'
 import { cn } from '@/lib/utils'
 import type { TeamStat } from '@/types/scorers'
@@ -8,6 +9,7 @@ import type { TeamStat } from '@/types/scorers'
 interface Props {
   stat: TeamStat
   index?: number
+  onClick?: () => void
 }
 
 const rowVariants = {
@@ -18,7 +20,7 @@ const rowVariants = {
   }),
 }
 
-export function TeamStatRow({ stat, index = 0 }: Props) {
+export function TeamStatRow({ stat, index = 0, onClick }: Props) {
   const isTop3 = stat.rank <= 3
 
   return (
@@ -33,9 +35,11 @@ export function TeamStatRow({ stat, index = 0 }: Props) {
         isTop3
           ? 'bg-gradient-to-r from-white/[0.03] to-transparent hover:from-white/[0.06]'
           : 'hover:bg-white/[0.025]',
+        onClick && 'cursor-pointer',
       )}
       whileHover={{ x: 2 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
     >
       {/* Top-3 accent bar */}
       {isTop3 && (
@@ -102,6 +106,11 @@ export function TeamStatRow({ stat, index = 0 }: Props) {
           {stat.goalDifference > 0 ? '+' : ''}{stat.goalDifference}
         </span>
       </div>
+
+      {/* Chevron */}
+      {onClick && (
+        <ChevronRight className="w-4 h-4 text-text-muted/40 shrink-0 group-hover:text-text-muted transition-colors" />
+      )}
 
       {/* Goals scored */}
       <div className="shrink-0 text-right min-w-[3.5rem]">

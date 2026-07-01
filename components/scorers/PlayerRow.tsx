@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { motion } from 'framer-motion'
+import { ChevronRight } from 'lucide-react'
 import { TeamFlag } from '@/components/shared/TeamFlag'
 import { cn } from '@/lib/utils'
 import type { Scorer } from '@/types/scorers'
@@ -11,6 +12,7 @@ interface PlayerRowProps {
   highlightStat: 'goals' | 'assists'
   enhancedPhotoUrl?: string | null
   index?: number
+  onClick?: () => void
 }
 
 const MEDAL = [
@@ -86,17 +88,10 @@ const rowVariants = {
   }),
 }
 
-export function PlayerRow({ scorer, highlightStat, enhancedPhotoUrl, index = 0 }: PlayerRowProps) {
+export function PlayerRow({ scorer, highlightStat, enhancedPhotoUrl, index = 0, onClick }: PlayerRowProps) {
   const isTop3    = scorer.rank <= 3
   const statValue = highlightStat === 'goals' ? scorer.goals : scorer.assists
   const photoUrl  = enhancedPhotoUrl !== undefined ? enhancedPhotoUrl : scorer.athlete.photoUrl
-
-  const hasSecondary = highlightStat === 'goals'
-    ? scorer.assists > 0
-    : scorer.goals > 0
-  const secondaryLabel = highlightStat === 'goals'
-    ? `${scorer.assists} ast`
-    : `${scorer.goals} gls`
 
   return (
     <motion.div
@@ -110,9 +105,11 @@ export function PlayerRow({ scorer, highlightStat, enhancedPhotoUrl, index = 0 }
         isTop3
           ? 'bg-gradient-to-r from-white/[0.03] to-transparent hover:from-white/[0.06]'
           : 'hover:bg-white/[0.025]',
+        onClick && 'cursor-pointer',
       )}
       whileHover={{ x: 2 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onClick={onClick}
     >
       {/* Top-3 left accent */}
       {isTop3 && (
@@ -156,13 +153,9 @@ export function PlayerRow({ scorer, highlightStat, enhancedPhotoUrl, index = 0 }
         </div>
       </div>
 
-      {/* Secondary badge */}
-      {hasSecondary && (
-        <div className="hidden sm:flex shrink-0">
-          <span className="text-[11px] font-mono text-text-muted bg-bg-elevated border border-border/50 px-1.5 py-0.5 rounded-md">
-            {secondaryLabel}
-          </span>
-        </div>
+      {/* Chevron */}
+      {onClick && (
+        <ChevronRight className="w-4 h-4 text-text-muted/40 shrink-0 group-hover:text-text-muted transition-colors" />
       )}
 
       {/* Primary stat */}

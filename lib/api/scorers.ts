@@ -2,6 +2,7 @@ import type { Scorer, TeamStat } from '@/types/scorers'
 import { espnFetch, espnSiteUrl } from './espn-client'
 import { transformTeam } from '@/lib/transformers/team.transformer'
 import { fetchAllMatches } from './all-matches'
+import { fetchPlayerStatsFromEvents } from './match-player-stats'
 import { LEAGUE } from '@/lib/constants'
 
 // WC 2026 week batches for scoreboard team-data mapping
@@ -38,7 +39,7 @@ interface StatCategory {
 async function fetchStatisticsLeaders(): Promise<{ goals: StatLeader[]; assists: StatLeader[] }> {
   const url = espnSiteUrl(`/apis/site/v2/sports/soccer/${LEAGUE}/statistics`)
   try {
-    const data = await espnFetch<{ stats?: StatCategory[] }>(url, { cacheSeconds: 90 })
+    const data = await espnFetch<{ stats?: StatCategory[] }>(url, { cacheSeconds: 30 })
     const stats = data.stats || []
     const goalsCategory   = stats.find(s => s.name === 'goalsLeaders')
     const assistsCategory = stats.find(s => s.name === 'assistsLeaders')
@@ -111,6 +112,10 @@ function parseDisplayValue(dv: string): { matches: number; goals: number; assist
   return { matches: num('Matches'), goals: num('Goals'), assists: num('Assists') }
 }
 
+function normalizeName(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '').trim()
+}
+
 // ─── Build Scorer from StatLeader ─────────────────────────────────────────────
 
 function buildScorer(
@@ -118,12 +123,14 @@ function buildScorer(
   rank: number,
   mode: 'goals' | 'assists',
   teamMap: Map<string, Record<string, unknown>>,
+  crossStats?: Map<string, { goals: number; assists: number; matches: number }>,
+  // Match-event aggregation: more accurate than ESPN /statistics (which can lag)
+  eventStats?: Map<string, { goals: number; assists: number; matchesPlayed: number }>,
 ): Scorer | null {
   const ath = leader.athlete
   if (!ath?.id) return null
 
   const parsed = parseDisplayValue(leader.displayValue || '')
-  // athlete.team is the reliable source; fall back to scoreboard map
   const teamRaw = (ath.team && Object.keys(ath.team).length > 0 ? ath.team : null)
     ?? teamMap.get(ath.id)
     ?? null
@@ -131,6 +138,15 @@ function buildScorer(
 
   const team = transformTeam(teamRaw)
   const photoUrl = ath.headshot?.href || null
+
+  const cross = crossStats?.get(ath.id)
+  // Prefer match-event counts (real-time, counted from match summaries) over
+  // ESPN's /statistics endpoint (known to lag several goals behind).
+  const eventEntry = eventStats?.get(normalizeName(ath.displayName))
+
+  const goals   = eventEntry?.goals   ?? (mode === 'goals'   ? Math.round(leader.value) : (cross?.goals   ?? parsed.goals   ?? 0))
+  const assists = eventEntry?.assists ?? (mode === 'assists' ? Math.round(leader.value) : (cross?.assists  ?? parsed.assists ?? 0))
+  const matches = eventEntry?.matchesPlayed ?? cross?.matches ?? parsed.matches ?? 0
 
   return {
     rank,
@@ -143,10 +159,10 @@ function buildScorer(
       position: ath.position?.abbreviation || null,
     },
     team,
-    goals: parsed.goals || (mode === 'goals' ? Math.round(leader.value) : 0),
-    assists: parsed.assists || (mode === 'assists' ? Math.round(leader.value) : 0),
+    goals,
+    assists,
     penalties: 0,
-    matchesPlayed: parsed.matches || 0,
+    matchesPlayed: matches,
   }
 }
 
@@ -207,21 +223,50 @@ export async function fetchScorers(): Promise<{
   teams: TeamStat[]
 }> {
   try {
-    const [statLeaders, teamMap, teams] = await Promise.all([
+    const [statLeaders, teamMap, teams, eventStats] = await Promise.all([
       fetchStatisticsLeaders(),
       buildAthleteTeamMap(),
       fetchTeamStats(),
+      fetchPlayerStatsFromEvents(),
     ])
 
+    // Cross-reference ESPN goals + assists leader lists so secondary stats are filled.
+    // (ESPN displayValue only contains the primary stat for each category.)
+    const crossStats = new Map<string, { goals: number; assists: number; matches: number }>()
+
+    for (const leader of statLeaders.goals) {
+      if (!leader.athlete?.id) continue
+      const parsed = parseDisplayValue(leader.displayValue || '')
+      const e = crossStats.get(leader.athlete.id) ?? { goals: 0, assists: 0, matches: 0 }
+      e.goals   = Math.round(leader.value)
+      e.matches = Math.max(e.matches, parsed.matches || 0)
+      crossStats.set(leader.athlete.id, e)
+    }
+
+    for (const leader of statLeaders.assists) {
+      if (!leader.athlete?.id) continue
+      const parsed = parseDisplayValue(leader.displayValue || '')
+      const e = crossStats.get(leader.athlete.id) ?? { goals: 0, assists: 0, matches: 0 }
+      e.assists = Math.round(leader.value)
+      e.matches = Math.max(e.matches, parsed.matches || 0)
+      crossStats.set(leader.athlete.id, e)
+    }
+
+    // Build scorers with event-based counts, then re-sort & re-rank so the
+    // corrected totals determine the final leaderboard order.
     const goals = statLeaders.goals
-      .map((l, i) => buildScorer(l, i + 1, 'goals', teamMap))
+      .map((l, i) => buildScorer(l, i + 1, 'goals', teamMap, crossStats, eventStats))
       .filter((s): s is Scorer => s !== null)
+      .sort((a, b) => b.goals - a.goals)
       .slice(0, 20)
+      .map((s, i) => ({ ...s, rank: i + 1 }))
 
     const assists = statLeaders.assists
-      .map((l, i) => buildScorer(l, i + 1, 'assists', teamMap))
+      .map((l, i) => buildScorer(l, i + 1, 'assists', teamMap, crossStats, eventStats))
       .filter((s): s is Scorer => s !== null)
+      .sort((a, b) => b.assists - a.assists)
       .slice(0, 20)
+      .map((s, i) => ({ ...s, rank: i + 1 }))
 
     return { goals, assists, teams }
   } catch {

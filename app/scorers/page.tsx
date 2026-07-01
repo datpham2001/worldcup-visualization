@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { PageContainer } from '@/components/shared/PageContainer'
 import { SectionHeading } from '@/components/shared/SectionHeading'
 import { LeaderboardTable } from '@/components/scorers/LeaderboardTable'
+import { PlayerDetailModal } from '@/components/scorers/PlayerDetailModal'
+import { TeamDetailModal } from '@/components/scorers/TeamDetailModal'
 import { ErrorState } from '@/components/shared/ErrorState'
 import type { Scorer, TeamStat } from '@/types/scorers'
 import { cn } from '@/lib/utils'
@@ -113,6 +115,11 @@ export default function ScorersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(false)
 
+  // Modal state
+  const [selectedPlayer, setSelectedPlayer] = useState<Scorer | null>(null)
+  const [selectedPlayerTab, setSelectedPlayerTab] = useState<'goals' | 'assists'>('goals')
+  const [selectedTeam, setSelectedTeam]     = useState<TeamStat | null>(null)
+
   const loadData = useCallback(async (showLoader = false) => {
     if (showLoader) setLoading(true)
     try {
@@ -175,18 +182,44 @@ export default function ScorersPage() {
             transition={{ duration: 0.18, ease: 'easeInOut' }}
           >
             {tab === 'teams' ? (
-              <LeaderboardTable mode="teams" teams={data.teams} />
+              <LeaderboardTable
+                mode="teams"
+                teams={data.teams}
+                onTeamClick={stat => setSelectedTeam(stat)}
+              />
             ) : (
               <LeaderboardTable
                 mode="players"
                 scorers={activeScorers}
                 highlightStat={tab}
                 enhancedPhotos={activePhotos}
+                onPlayerClick={scorer => {
+                  setSelectedPlayer(scorer)
+                  setSelectedPlayerTab(tab as 'goals' | 'assists')
+                }}
               />
             )}
           </motion.div>
         </AnimatePresence>
       )}
+
+      {/* Player detail modal */}
+      <PlayerDetailModal
+        scorer={selectedPlayer}
+        type={selectedPlayerTab}
+        enhancedPhotoUrl={
+          selectedPlayer
+            ? activePhotos[selectedPlayer.athlete.id]
+            : undefined
+        }
+        onClose={() => setSelectedPlayer(null)}
+      />
+
+      {/* Team detail modal */}
+      <TeamDetailModal
+        stat={selectedTeam}
+        onClose={() => setSelectedTeam(null)}
+      />
     </PageContainer>
   )
 }
